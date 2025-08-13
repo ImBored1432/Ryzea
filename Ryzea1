@@ -568,3 +568,27 @@ local VisBoxESPToggle = VisTab:CreateToggle({
         end
     end,
 })
+
+-- Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Default FOV
+local defaultFOV = 70
+Camera.FieldOfView = defaultFOV
+
+-- Example: create a FOV toggle slider using your UI library
+local VisTab = ... -- your UI tab reference
+local VisFOVSlider = VisTab:CreateSlider({
+    Name = "FOV Changer",
+    Min = 10,
+    Max = 120,
+    Default = defaultFOV,
+    Flag = "FOVSlider",
+    Callback = function(Value)
+        -- Change the camera's FOV dynamically
+        Camera.FieldOfView = Value
+    end,
+})
+
