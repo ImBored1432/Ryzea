@@ -1,0 +1,570 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Ryzea Client",
+   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "Interface is Loading. Wait.",
+   LoadingSubtitle = "Developed by Radiant.gg",
+   ShowText = "Rayfield", -- for mobile users to unhide rayfield, change if you'd like
+   Theme = "Default", -- Check https://[Log in to view URL]
+
+   ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "..."
+   },
+
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+   },
+
+   KeySystem = true, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Enter Key.",
+      Subtitle = "Key System",
+      Note = "This Script is private. if you want access, join the discord, and apply to use it.", -- Use this to tell the user how to get a key
+      FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = false, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = true, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"https://pastebin.com/raw/5EErrxsU"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+   }
+})
+
+local MainTab = Window:CreateTab("Aim", nil) -- Title, Image
+local MainSection = MainTab:CreateSection("Aim Modifications")
+Rayfield:Notify({
+   Title = "Injected and Executed Succesfully. Please wait around 3 seconds until enabling something.",
+   Content = "Notification Content",
+   Duration = 5,
+   Image = nil,
+})
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local fovRadius = 100
+local aiming = false
+local fovCircle
+local connection
+local inputBeganConn
+local inputEndedConn
+
+
+
+local MainToggle = MainTab:CreateToggle({
+    Name = "Blatant Aimbot",
+    CurrentValue = false,
+    Flag = "Toggle1",
+    Callback = function(Value)
+        if Value then
+            -- Enable aimbot
+            fovCircle = Drawing.new("Circle")
+            fovCircle.Radius = fovRadius
+            fovCircle.Color = Color3.fromRGB(255, 0, 0)
+            fovCircle.Thickness = 2
+            fovCircle.Filled = false
+            fovCircle.Transparency = 1
+
+            inputBeganConn = UserInputService.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                    aiming = true
+                end
+            end)
+
+            inputEndedConn = UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                    aiming = false
+                end
+            end)
+
+            connection = RunService.RenderStepped:Connect(function()
+                if fovCircle then
+                    local mousePos = UserInputService:GetMouseLocation()
+                    fovCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
+
+                    if aiming then
+                        local target = nil
+                        local shortestDistance = math.huge
+
+                        for _, player in pairs(Players:GetPlayers()) do
+                            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                                local headPos, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+                                if onScreen then
+                                    local distance = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(headPos.X, headPos.Y)).Magnitude
+                                    if distance <= fovRadius and distance < shortestDistance then
+                                        shortestDistance = distance
+                                        target = player
+                                    end
+                                end
+                            end
+                        end
+                        
+
+                        if target and target.Character and target.Character:FindFirstChild("Head") then
+                            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
+                        end
+                    end
+                end
+            end)
+        else
+            -- Disable aimbot
+            if fovCircle then
+                fovCircle:Remove()
+                fovCircle = nil
+            end
+            if connection then
+                connection:Disconnect()
+                connection = nil
+            end
+            if inputBeganConn then
+                inputBeganConn:Disconnect()
+                inputBeganConn = nil
+            end
+            if inputEndedConn then
+                inputEndedConn:Disconnect()
+                inputEndedConn = nil
+            end
+            aiming = false
+        end
+    end,
+})
+
+-- FOV Slider
+local MainSlider = MainTab:CreateSlider({
+    Name = "FOV Size",
+    Range = {50, 500}, -- Minimum and maximum FOV radius
+    Increment = 5,
+    Suffix = "px",
+    CurrentValue = fovRadius,
+    Flag = "SliderFOV",
+    Callback = function(Value)
+        fovRadius = Value
+        if fovCircle then
+            fovCircle.Radius = fovRadius -- Update FOV circle radius immediately
+        end
+    end,
+})
+
+-- Function to convert HSV to RGB
+local function HSVToRGB(h, s, v)
+    local c = v * s
+    local x = c * (1 - math.abs((h / 60) % 2 - 1))
+    local m = v - c
+    local r, g, b = 0, 0, 0
+
+    if h >= 0 and h < 60 then
+        r, g, b = c, x, 0
+    elseif h >= 60 and h < 120 then
+        r, g, b = x, c, 0
+    elseif h >= 120 and h < 180 then
+        r, g, b = 0, c, x
+    elseif h >= 180 and h < 240 then
+        r, g, b = 0, x, c
+    elseif h >= 240 and h < 300 then
+        r, g, b = x, 0, c
+    elseif h >= 300 and h < 360 then
+        r, g, b = c, 0, x
+    end
+
+    return Color3.fromRGB(
+        math.floor((r + m) * 255),
+        math.floor((g + m) * 255),
+        math.floor((b + m) * 255)
+    )
+end
+
+-- FOV Color Slider
+local MainSliderColor = MainTab:CreateSlider({
+    Name = "FOV Color",
+    Range = {0, 360},
+    Increment = 1,
+    Suffix = "°",
+    CurrentValue = 0,
+    Flag = "FOVColor",
+    Callback = function(Value)
+        local newColor = HSVToRGB(Value, 1, 1) -- full saturation & value
+        if fovCircle then
+            fovCircle.Color = newColor
+        end
+    end,
+})
+
+local smoothIntensity = 0.2 -- 0.01 = very slow, 1 = almost instant
+
+local MainToggle = MainTab:CreateToggle({
+    Name = "Smooth Aimbot",
+    CurrentValue = false,
+    Flag = "Toggle1",
+    Callback = function(Value)
+        if Value then
+            -- Enable aimbot
+            fovCircle = Drawing.new("Circle")
+            fovCircle.Radius = fovRadius
+            fovCircle.Color = Color3.fromRGB(255, 0, 0)
+            fovCircle.Thickness = 2
+            fovCircle.Filled = false
+            fovCircle.Transparency = 1
+
+            inputBeganConn = UserInputService.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                    aiming = true
+                end
+            end)
+
+            inputEndedConn = UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                    aiming = false
+                end
+            end)
+
+            connection = RunService.RenderStepped:Connect(function()
+                if fovCircle then
+                    local mousePos = UserInputService:GetMouseLocation()
+                    fovCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
+
+                    if aiming then
+                        local target = nil
+                        local shortestDistance = math.huge
+
+                        for _, player in pairs(Players:GetPlayers()) do
+                            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                                local headPos, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+                                if onScreen then
+                                    local distance = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(headPos.X, headPos.Y)).Magnitude
+                                    if distance <= fovRadius and distance < shortestDistance then
+                                        shortestDistance = distance
+                                        target = player
+                                    end
+                                end
+                            end
+                        end
+
+                        if target and target.Character and target.Character:FindFirstChild("Head") then
+                            -- Smoothly move camera toward target
+                            local targetCFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
+                            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, smoothIntensity)
+                        end
+                    end
+                end
+            end)
+        else
+            -- Disable aimbot
+            if fovCircle then
+                fovCircle:Remove()
+                fovCircle = nil
+            end
+            if connection then
+                connection:Disconnect()
+                connection = nil
+            end
+            if inputBeganConn then
+                inputBeganConn:Disconnect()
+                inputBeganConn = nil
+            end
+            if inputEndedConn then
+                inputEndedConn:Disconnect()
+                inputEndedConn = nil
+            end
+            aiming = false
+        end
+    end,
+})
+
+local VisTab = Window:CreateTab("Visuals", nil) -- Title, Image
+local VisSection = VisTab:CreateSection("Visual Modifications")
+Rayfield:Notify({
+   Title = ".",
+   Content = "",
+   Duration = 0.1,
+   Image = nil,
+})
+
+local HeadESPEnabled = false
+local espConnection = nil
+local headESPTable = {}
+local fixedScreenRadius = 10 -- Fixed pixel radius on screen
+
+local VisHeadESPToggle = VisTab:CreateToggle({
+    Name = "Head ESP",
+    CurrentValue = false,
+    Flag = "HeadESPToggle",
+    Callback = function(Value)
+        HeadESPEnabled = Value
+
+        if HeadESPEnabled then
+            espConnection = RunService.RenderStepped:Connect(function()
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                        local head = player.Character.Head
+
+                        if not headESPTable[player] then
+                            local circle = Drawing.new("Circle")
+                            circle.Radius = 10 -- fixed screen size
+                            circle.Color = Color3.new(1, 1, 1) -- White
+                            circle.Thickness = 2
+                            circle.Filled = false
+                            headESPTable[player] = circle
+                        end
+
+                        local circle = headESPTable[player]
+                        local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+
+                        if onScreen then
+                            circle.Position = Vector2.new(headPos.X, headPos.Y)
+                            circle.Visible = true
+                        else
+                            circle.Visible = false
+                        end
+                    end
+                end
+
+                -- Cleanup removed players
+                for player, circle in pairs(headESPTable) do
+                    if not player.Parent then
+                        circle:Remove()
+                        headESPTable[player] = nil
+                    end
+                end
+            end)
+        else
+            if espConnection then
+                espConnection:Disconnect()
+                espConnection = nil
+            end
+            for _, circle in pairs(headESPTable) do
+                circle:Remove()
+            end
+            headESPTable = {}
+        end
+    end,
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local SkeletonSettings = {
+    Color = Color3.new(1, 0, 0), -- White color
+    Thickness = 2,
+    Transparency = 1
+}
+
+local skeletons = {}
+local skeletonConnections = {}
+
+local function createLine()
+    local line = Drawing.new("Line")
+    line.Visible = false
+    return line
+end
+
+local function removeSkeleton(skeleton)
+    for _, line in pairs(skeleton) do
+        line:Remove()
+    end
+end
+
+local function trackPlayer(plr)
+    local skeleton = {}
+    
+    local function updateSkeleton()
+        if not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") then
+            for _, line in pairs(skeleton) do
+                line.Visible = false
+            end
+            return
+        end
+
+        local character = plr.Character
+        local humanoid = character:FindFirstChild("Humanoid")
+        local joints = {}
+
+        if humanoid and humanoid.RigType == Enum.HumanoidRigType.R15 then
+            joints = {
+                Head = character:FindFirstChild("Head"),
+                UpperTorso = character:FindFirstChild("UpperTorso"),
+                LowerTorso = character:FindFirstChild("LowerTorso"),
+                LeftUpperArm = character:FindFirstChild("LeftUpperArm"),
+                LeftLowerArm = character:FindFirstChild("LeftLowerArm"),
+                LeftHand = character:FindFirstChild("LeftHand"),
+                RightUpperArm = character:FindFirstChild("RightUpperArm"),
+                RightLowerArm = character:FindFirstChild("RightLowerArm"),
+                RightHand = character:FindFirstChild("RightHand"),
+                LeftUpperLeg = character:FindFirstChild("LeftUpperLeg"),
+                LeftLowerLeg = character:FindFirstChild("LeftLowerLeg"),
+                RightUpperLeg = character:FindFirstChild("RightUpperLeg"),
+                RightLowerLeg = character:FindFirstChild("RightLowerLeg")
+            }
+        elseif humanoid and humanoid.RigType == Enum.HumanoidRigType.R6 then
+            joints = {
+                Head = character:FindFirstChild("Head"),
+                Torso = character:FindFirstChild("Torso"),
+                LeftArm = character:FindFirstChild("Left Arm"),
+                RightArm = character:FindFirstChild("Right Arm"),
+                LeftLeg = character:FindFirstChild("Left Leg"),
+                RightLeg = character:FindFirstChild("Right Leg")
+            }
+        end
+
+        local connections = {}
+        if humanoid and humanoid.RigType == Enum.HumanoidRigType.R15 then
+            connections = {
+                {"Head","UpperTorso"}, {"UpperTorso","LowerTorso"},
+                {"LowerTorso","LeftUpperLeg"}, {"LeftUpperLeg","LeftLowerLeg"},
+                {"LowerTorso","RightUpperLeg"}, {"RightUpperLeg","RightLowerLeg"},
+                {"UpperTorso","LeftUpperArm"}, {"LeftUpperArm","LeftLowerArm"},
+                {"LeftLowerArm","LeftHand"}, {"UpperTorso","RightUpperArm"},
+                {"RightUpperArm","RightLowerArm"}, {"RightLowerArm","RightHand"}
+            }
+        elseif humanoid and humanoid.RigType == Enum.HumanoidRigType.R6 then
+            connections = {
+                {"Head","Torso"}, {"Torso","LeftArm"}, {"Torso","RightArm"},
+                {"Torso","LeftLeg"}, {"Torso","RightLeg"}
+            }
+        end
+
+        for index, conn in ipairs(connections) do
+            local jointA = joints[conn[1]]
+            local jointB = joints[conn[2]]
+
+            if jointA and jointB then
+                local posA, onScreenA = Camera:WorldToViewportPoint(jointA.Position)
+                local posB, onScreenB = Camera:WorldToViewportPoint(jointB.Position)
+
+                local line = skeleton[index] or createLine()
+                skeleton[index] = line
+
+                line.Color = SkeletonSettings.Color
+                line.Thickness = SkeletonSettings.Thickness
+                line.Transparency = SkeletonSettings.Transparency
+
+                if onScreenA and onScreenB then
+                    line.From = Vector2.new(posA.X, posA.Y)
+                    line.To = Vector2.new(posB.X, posB.Y)
+                    line.Visible = true
+                else
+                    line.Visible = false
+                end
+            elseif skeleton[index] then
+                skeleton[index].Visible = false
+            end
+        end
+    end
+
+    local connection = RunService.RenderStepped:Connect(function()
+        if plr and plr.Parent then
+            updateSkeleton()
+        else
+            removeSkeleton(skeleton)
+        end
+    end)
+
+    skeletons[plr] = skeleton
+    skeletonConnections[plr] = connection
+end
+
+local function untrackPlayer(plr)
+    if skeletonConnections[plr] then
+        skeletonConnections[plr]:Disconnect()
+        skeletonConnections[plr] = nil
+    end
+    if skeletons[plr] then
+        removeSkeleton(skeletons[plr])
+        skeletons[plr] = nil
+    end
+end
+
+-- Toggle Button
+local SkeletonToggle = VisTab:CreateToggle({
+    Name = "Skeleton ESP",
+    CurrentValue = false,
+    Flag = "SkeletonESPToggle",
+    Callback = function(Value)
+        if Value then
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer then
+                    trackPlayer(plr)
+                end
+            end
+            Players.PlayerAdded:Connect(function(plr)
+                if plr ~= LocalPlayer then
+                    trackPlayer(plr)
+                end
+            end)
+            Players.PlayerRemoving:Connect(untrackPlayer)
+        else
+            for plr, _ in pairs(skeletons) do
+                untrackPlayer(plr)
+            end
+        end
+    end
+})
+
+local VisBoxESPToggle = VisTab:CreateToggle({
+    Name = "Box ESP",
+    CurrentValue = false,
+    Flag = "BoxESPToggle",
+    Callback = function(Value)
+        if Value then
+            espConnection = RunService.RenderStepped:Connect(function()
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local root = player.Character.HumanoidRootPart
+                        local head = player.Character:FindFirstChild("Head")
+
+                        if not boxESPTable[player] then
+                            local box = Drawing.new("Square")
+                            box.Color = Color3.new(1,1,1) -- White
+                            box.Thickness = 2
+                            box.Filled = false
+                            boxESPTable[player] = box
+                        end
+
+                        local box = boxESPTable[player]
+
+                        local topPos, onScreenTop = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                        local bottomPos, onScreenBottom = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+
+                        if onScreenTop and onScreenBottom then
+                            local width = 2 * (topPos.Z / bottomPos.Z) -- keeps size consistent horizontally
+                            local height = math.abs(topPos.Y - bottomPos.Y)
+                            box.Size = Vector2.new(width * 40, height) -- adjust multiplier if needed
+                            box.Position = Vector2.new(topPos.X - box.Size.X/2, topPos.Y)
+                            box.Visible = true
+                        else
+                            box.Visible = false
+                        end
+                    end
+                end
+
+                -- Cleanup removed players
+                for player, box in pairs(boxESPTable) do
+                    if not player.Parent then
+                        box:Remove()
+                        boxESPTable[player] = nil
+                    end
+                end
+            end)
+        else
+            if espConnection then
+                espConnection:Disconnect()
+                espConnection = nil
+            end
+            for _, box in pairs(boxESPTable) do
+                box:Remove()
+            end
+            boxESPTable = {}
+        end
+    end,
+})
